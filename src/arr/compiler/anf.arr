@@ -36,16 +36,7 @@ data ANFCont:
 end
 
 fun anf-term(e :: A.Expr) -> N.AExpr:
-  anf(e, k-cont(lam(x):
-        cases(N.ALettable) x:
-            # tail call
-          | a-app(l, f, args) =>
-            name = mk-id(l, "anf_tail_app")
-            N.a-let(l, name.id-b, x, N.a-lettable(l, N.a-val(l, name.id-e)))
-          | else => N.a-lettable(x.l, x)
-        end
-      end)
-    )
+  anf(e, k-cont(lam(x): N.a-lettable(x.l, x) end))
 end
 
 fun bind(l, id): N.a-bind(l, id, A.a-blank);
