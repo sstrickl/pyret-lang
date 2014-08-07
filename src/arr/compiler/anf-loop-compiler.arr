@@ -777,41 +777,41 @@ compiler-visitor = {
     other-stmts = visit-vals.foldr(lam(v, acc): v.other-stmts + acc end, empty)
     c-exp(j-list(false, visit-vals.map(_.exp)), other-stmts)
   end,
-  a-srcloc(self, l, loc):
-    c-exp(self.get-loc(loc), empty)
+  a-srcloc(self, srcloc):
+    c-exp(self.get-loc(srcloc.loc), empty)
   end,
-  a-num(self, l :: Loc, n :: Number):
-    if num-is-fixnum(n):
-      c-exp(j-parens(j-num(n)), empty)
+  a-num(self, num):
+    if num-is-fixnum(num.n):
+      c-exp(j-parens(j-num(num.n)), empty)
     else:
-      c-exp(rt-method("makeNumberFromString", [list: j-str(tostring(n))]), empty)
+      c-exp(rt-method("makeNumberFromString", [list: j-str(tostring(num.n))]), empty)
     end
   end,
-  a-str(self, l :: Loc, s :: String):
-    c-exp(j-parens(j-str(s)), empty)
+  a-str(self, str):
+    c-exp(j-parens(j-str(str.s)), empty)
   end,
-  a-bool(self, l :: Loc, b :: Boolean):
-    c-exp(j-parens(if b: j-true else: j-false end), empty)
+  a-bool(self, bool):
+    c-exp(j-parens(if bool.b: j-true else: j-false end), empty)
   end,
-  a-undefined(self, l :: Loc):
+  a-undefined(self, undef):
     c-exp(undefined, empty)
   end,
-  a-id(self, l :: Loc, id :: A.Name):
-    c-exp(j-id(js-id-of(id.tostring())), empty)
+  a-id(self, id):
+    c-exp(j-id(js-id-of(id.id.tostring())), empty)
   end,
-  a-id-var(self, l :: Loc, id :: A.Name):
-    c-exp(j-dot(j-id(js-id-of(id.tostring())), "$var"), empty)
+  a-id-var(self, id):
+    c-exp(j-dot(j-id(js-id-of(id.id.tostring())), "$var"), empty)
   end,
-  a-id-letrec(self, l :: Loc, id :: A.Name, safe :: Boolean):
-    s = id.tostring()
-    if safe:
-      c-exp(j-dot(j-id(js-id-of(s)), "$var"), empty)
+  a-id-letrec(self, id):
+    s = j-id(js-id-of(id.id.tostring()))
+    if id.safe:
+      c-exp(j-dot(s, "$var"), empty)
     else:
       c-exp(
         j-ternary(
-          j-binop(j-dot(j-id(js-id-of(s)), "$var"), j-eq, undefined),
-          raise-id-exn(self.get-loc(l), id.toname()),
-          j-dot(j-id(js-id-of(s)), "$var")),
+          j-binop(j-dot(s, "$var"), j-eq, undefined),
+          raise-id-exn(self.get-loc(id.l), id.id.toname()),
+          j-dot(s, "$var")),
         empty)
     end
   end,

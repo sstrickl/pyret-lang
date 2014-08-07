@@ -83,7 +83,8 @@ data Name:
     tosource(self): PP.str("_") end,
     tostring(self): "_" end,
     toname(self): raise("Cannot get name for underscore") end,
-    key(self): "underscore#" end
+    key(self): "underscore#" end,
+    visit(self, visitor): visitor.s-underscore(self) end
 
   | s-name(l :: Loc, s :: String) with:
     to-compiled-source(self): raise("Cannot compile local name " + self.s) end,
@@ -91,7 +92,8 @@ data Name:
     tosource(self): PP.str(self.s) end,
     tostring(self): self.s end,
     toname(self): self.s end,
-    key(self): "name#" + self.s end
+    key(self): "name#" + self.s end,
+    visit(self, visitor): visitor.s-name(self) end
 
   | s-global(s :: String) with:
     to-compiled-source(self): PP.str(self.to-compiled()) end,
@@ -99,7 +101,8 @@ data Name:
     tosource(self): PP.str(self.s) end,
     tostring(self): self.s end,
     toname(self): self.s end,
-    key(self): "global#" + self.s end
+    key(self): "global#" + self.s end,
+    visit(self, visitor): visitor.s-global(self) end
 
   | s-type-global(s :: String) with:
     to-compiled-source(self): PP.str(self.to-compiled()) end,
@@ -107,7 +110,8 @@ data Name:
     tosource(self): PP.str(self.s) end,
     tostring(self): "$type$" + self.s end,
     toname(self): self.s end,
-    key(self): "tglobal#" + self.s end
+    key(self): "tglobal#" + self.s end,
+    visit(self, visitor): visitor.s-type-global(self) end
 
   | s-atom(base :: String, serial :: Number) with:
     to-compiled-source(self): PP.str(self.to-compiled()) end,
@@ -115,15 +119,13 @@ data Name:
     tosource(self): PP.str(self.to-compiled()) end,
     tostring(self): self.to-compiled() end,
     toname(self): self.base end,
-    key(self): "atom#" + self.base + tostring(self.serial) end
+    key(self): "atom#" + self.base + tostring(self.serial) end,
+    visit(self, visitor): visitor.s-atom(self) end
 sharing:
   _lessthan(self, other): self.key() < other.key() end,
   _lessequal(self, other): self.key() <= other.key() end,
   _greaterthan(self, other): self.key() > other.key() end,
-  _greaterequal(self, other): self.key() >= other.key() end,
-  visit(self, visitor):
-    self._match(visitor, lam(): raise("No visitor field for " + tostring(self)) end)
-  end
+  _greaterequal(self, other): self.key() >= other.key() end
 end
 
 fun MakeName(start):
@@ -624,6 +626,7 @@ data Expr:
             PP.separate(PP.commabreak, self.args.map(_.tosource())))))
     end
   | s-prim-val(l :: Loc, name :: String) with:
+    visit(self, visitor): visitor.s-prim-val(self) end,
     label(self): "s-prim-val" end,
     tosource(self): PP.str(self.name) end
   | s-id(l :: Loc, id :: Name) with:
@@ -636,21 +639,27 @@ data Expr:
     label(self): "s-id-letrec" end,
     tosource(self): PP.str("~") + self.id.tosource() end
   | s-undefined(l :: Loc) with:
+    visit(self, visitor): visitor.s-undefined(self) end,
     label(self): "s-undefined" end,
     tosource(self): PP.str("undefined") end
   | s-srcloc(l :: Loc, loc :: Loc) with:
+    visit(self, visitor): visitor.s-srcloc(self) end,
     label(self): "s-srcloc" end,
     tosource(self): PP.str(torepr(self.loc)) end
   | s-num(l :: Loc, n :: Number) with:
+    visit(self, visitor): visitor.s-num(self) end,
     label(self): "s-num" end,
     tosource(self): PP.number(self.n) end
   | s-frac(l :: Loc, num :: Number, den :: Number) with:
+    visit(self, visitor): visitor.s-frac(self) end,
     label(self): "s-frac" end,
     tosource(self): PP.number(self.num) + PP.str("/") + PP.number(self.den) end
   | s-bool(l :: Loc, b :: Boolean) with:
+    visit(self, visitor): visitor.s-bool(self) end,
     label(self): "s-bool" end,
     tosource(self): PP.str(tostring(self.b)) end
   | s-str(l :: Loc, s :: String) with:
+    visit(self, visitor): visitor.s-str(self) end,
     label(self): "s-str" end,
     tosource(self): PP.str(torepr(self.s)) end
   | s-dot(l :: Loc, obj :: Expr, field :: String) with:
@@ -1133,25 +1142,11 @@ default-map-visitor = {
     end
   end,
 
-  s-underscore(self, l):
-    s-underscore(l)
-  end,
-
-  s-name(self, l, s):
-    s-name(l, s)
-  end,
-
-  s-type-global(self, s):
-    s-type-global(s)
-  end,
-
-  s-global(self, s):
-    s-global(s)
-  end,
-
-  s-atom(self, base, serial):
-    s-atom(base, serial)
-  end,
+  s-underscore(self, name): name end,
+  s-name(self, name): name end,
+  s-type-global(self, name): name end,
+  s-global(self, name): name end,
+  s-atom(self, name): name end,
 
   s-module(self, l, answer, provides, types, checks):
     s-module(l, answer.visit(self), provides.visit(self), lists.map(_.visit(self), types), checks.visit(self))
@@ -1379,8 +1374,8 @@ default-map-visitor = {
   s-prim-app(self, l :: Loc, _fun :: String, args :: List<Expr>):
     s-prim-app(l, _fun, args.map(_.visit(self)))
   end,
-  s-prim-val(self, l :: Loc, name :: String):
-    s-prim-val(l, name)
+  s-prim-val(self, primval):
+    primval
   end,
   s-id(self, l :: Loc, id :: Name):
     s-id(l, id.visit(self))
@@ -1391,23 +1386,23 @@ default-map-visitor = {
   s-id-letrec(self, l :: Loc, id :: Name, safe :: Boolean):
     s-id-letrec(l, id.visit(self), safe)
   end,
-  s-undefined(self, l :: Loc):
-    s-undefined(self)
+  s-undefined(self, undef):
+    undef
   end,
-  s-srcloc(self, l, shadow loc):
-    s-srcloc(l, loc)
+  s-srcloc(self, srcloc):
+    srcloc
   end,
-  s-num(self, l :: Loc, n :: Number):
-    s-num(l, n)
+  s-num(self, num):
+    num
   end,
-  s-frac(self, l :: Loc, num :: Number, den :: Number):
-    s-frac(l, num, den)
+  s-frac(self, frac):
+    frac
   end,
-  s-bool(self, l :: Loc, b :: Boolean):
-    s-bool(l, b)
+  s-bool(self, bool):
+    bool
   end,
-  s-str(self, l :: Loc, s :: String):
-    s-str(l, s)
+  s-str(self, str):
+    str
   end,
   s-dot(self, l :: Loc, obj :: Expr, field :: String):
     s-dot(l, obj.visit(self), field)
@@ -1586,19 +1581,19 @@ default-iter-visitor = {
     end
   end,
 
-  s-underscore(self, l):
+  s-underscore(self, name):
     true
   end,
-  s-name(self, l, s):
+  s-name(self, name):
     true
   end,
-  s-global(self, s):
+  s-global(self, name):
     true
   end,
-  s-type-global(self, s):
+  s-type-global(self, name):
     true
   end,
-  s-atom(self, base, serial):
+  s-atom(self, name):
     true
   end,
   
@@ -1833,7 +1828,7 @@ default-iter-visitor = {
   s-prim-app(self, l :: Loc, _fun :: String, args :: List<Expr>):
     lists.all(_.visit(self), args)
   end,
-  s-prim-val(self, l :: Loc, name :: String):
+  s-prim-val(self, primval):
     true
   end,
   s-id(self, l :: Loc, id :: Name):
@@ -1845,22 +1840,22 @@ default-iter-visitor = {
   s-id-letrec(self, l :: Loc, id :: Name, safe :: Boolean):
     id.visit(self)
   end,
-  s-undefined(self, l :: Loc):
+  s-undefined(self, undef):
     true
   end,
-  s-srcloc(self, l, shadow loc):
+  s-srcloc(self, srcloc):
     true
   end,
-  s-num(self, l :: Loc, n :: Number):
+  s-num(self, num):
     true
   end,
-  s-frac(self, l :: Loc, num :: Number, den :: Number):
+  s-frac(self, frac):
     true
   end,
-  s-bool(self, l :: Loc, b :: Boolean):
+  s-bool(self, bool):
     true
   end,
-  s-str(self, l :: Loc, s :: String):
+  s-str(self, str):
     true
   end,
   s-dot(self, l :: Loc, obj :: Expr, field :: String):
@@ -2031,21 +2026,11 @@ dummy-loc-visitor = {
     end
   end,
 
-  s-underscore(self, l):
-    s-underscore(dummy-loc)
-  end,
-  s-name(self, l, s):
-    s-name(dummy-loc, s)
-  end,
-  s-global(self, s):
-    s-global(s)
-  end,
-  s-type-global(self, s):
-    s-type-global(s)
-  end,
-  s-atom(self, base, serial):
-    s-atom(base, serial)
-  end,
+  s-underscore(self, name): s-underscore(dummy-loc) end,
+  s-name(self, name): s-name(dummy-loc, name.s) end,
+  s-global(self, name): name end,
+  s-type-global(self, name): name end,
+  s-atom(self, name): name  end,
   
   s-module(self, l, answer, provides, types, checks):
     s-module(dummy-loc,
@@ -2274,8 +2259,8 @@ dummy-loc-visitor = {
   s-prim-app(self, l :: Loc, _fun :: String, args :: List<Expr>):
     s-prim-app(dummy-loc, _fun, args.map(_.visit(self)))
   end,
-  s-prim-val(self, l :: Loc, name :: String):
-    s-prim-val(dummy-loc, name)
+  s-prim-val(self, primval):
+    s-prim-val(dummy-loc, primval.name)
   end,
   s-id(self, l :: Loc, id :: Name):
     s-id(dummy-loc, id.visit(self))
@@ -2286,23 +2271,23 @@ dummy-loc-visitor = {
   s-id-letrec(self, l :: Loc, id :: Name, safe :: Boolean):
     s-id-letrec(dummy-loc, id.visit(self), safe)
   end,
-  s-undefined(self, l :: Loc):
-    s-undefined(self)
+  s-undefined(self, undef):
+    s-undefined(dummy-loc)
   end,
-  s-srcloc(self, l, shadow loc):
-    s-srcloc(dummy-loc, loc)
+  s-srcloc(self, srcloc):
+    s-srcloc(dummy-loc, srcloc.loc)
   end,
-  s-num(self, l :: Loc, n :: Number):
-    s-num(dummy-loc, n)
+  s-num(self, num):
+    s-num(dummy-loc, num.n)
   end,
-  s-frac(self, l :: Loc, num :: Number, den :: Number):
-    s-frac(dummy-loc, num, den)
+  s-frac(self, frac):
+    s-frac(dummy-loc, frac.num, frac.den)
   end,
-  s-bool(self, l :: Loc, b :: Boolean):
-    s-bool(dummy-loc, b)
+  s-bool(self, bool):
+    s-bool(dummy-loc, bool.b)
   end,
-  s-str(self, l :: Loc, s :: String):
-    s-str(dummy-loc, s)
+  s-str(self, str):
+    s-str(dummy-loc, str.s)
   end,
   s-dot(self, l :: Loc, obj :: Expr, field :: String):
     s-dot(dummy-loc, obj.visit(self), field)

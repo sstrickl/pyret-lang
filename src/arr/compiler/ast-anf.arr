@@ -345,34 +345,38 @@ end
 
 data AVal:
   | a-srcloc(l :: Loc, loc :: Loc) with:
+    visit(self, visitor): visitor.a-srcloc(self) end,
     label(self): "a-srcloc" end,
     tosource(self): PP.str(torepr(self.loc)) end
   | a-num(l :: Loc, n :: Number) with:
+    visit(self, visitor): visitor.a-num(self) end,
     label(self): "a-num" end,
     tosource(self): PP.number(self.n) end
   | a-str(l :: Loc, s :: String) with:
+    visit(self, visitor): visitor.a-str(self) end,
     label(self): "a-str" end,
     tosource(self): PP.str(torepr(self.s)) end
   | a-bool(l :: Loc, b :: Boolean) with:
+    visit(self, visitor): visitor.a-bool(self) end,
     label(self): "a-bool" end,
     tosource(self): PP.str(tostring(self.b)) end
   # used for letrec
   | a-undefined(l :: Loc) with:
+    visit(self, visitor): visitor.a-undefined(self) end,
     label(self): "a-undefined" end,
     tosource(self): PP.str("UNDEFINED") end
   | a-id(l :: Loc, id :: A.Name) with:
+    visit(self, visitor): visitor.a-id(self) end,
     label(self): "a-id" end,
     tosource(self): PP.str(self.id.tostring()) end
   | a-id-var(l :: Loc, id :: A.Name) with:
+    visit(self, visitor): visitor.a-id-var(self) end,
     label(self): "a-id-var" end,
     tosource(self): PP.str("!" + self.id.tostring()) end
   | a-id-letrec(l :: Loc, id :: A.Name, safe :: Boolean) with:
+    visit(self, visitor): visitor.a-id-letrec(self) end,
     label(self): "a-id-letrec" end,
     tosource(self): PP.str("~" + self.id.tostring()) end
-sharing:
-  visit(self, visitor):
-    self._match(visitor, lam(): raise("No visitor field for " + self.label()) end)
-  end
 end
 
 fun strip-loc-prog(p :: AProg):
@@ -579,32 +583,32 @@ default-map-visitor = {
   a-field(self, l :: Loc, name :: String, value :: AVal):
     a-field(l, name, value.visit(self))
   end,
-  a-srcloc(self, l, loc):
-    a-srcloc(l, loc)
+  a-srcloc(self, srcloc):
+    srcloc
   end,
-  a-num(self, l :: Loc, n :: Number):
-    a-num(l, n)
+  a-num(self, num):
+    num
   end,
   a-array(self, l :: Loc, vals :: List<AVal>):
     a-array(l, vals.map(_.visit(self)))
   end,
-  a-str(self, l :: Loc, s :: String):
-    a-str(l, s)
+  a-str(self, str):
+    str
   end,
-  a-bool(self, l :: Loc, b :: Boolean):
-    a-bool(l, b)
+  a-bool(self, bool):
+    bool
   end,
-  a-undefined(self, l :: Loc):
-    a-undefined(l)
+  a-undefined(self, undef):
+    undef
   end,
-  a-id(self, l :: Loc, id :: A.Name):
-    a-id(l, id)
+  a-id(self, id):
+    id
   end,
-  a-id-var(self, l :: Loc, id :: A.Name):
-    a-id-var(l, id)
+  a-id-var(self, id):
+    id
   end,
-  a-id-letrec(self, l :: Loc, id :: A.Name, safe :: Boolean):
-    a-id-letrec(l, id, safe)
+  a-id-letrec(self, id):
+    id
   end
 }
 
