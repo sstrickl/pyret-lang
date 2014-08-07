@@ -386,13 +386,13 @@ fun compile-anns(visitor, step, binds :: List<N.ABind>, entry-label):
   { new-cases: new-cases, new-label: cur-target }
 end
 
-fun compile-annotated-let(visitor, b :: N.ABind, compiled-e :: CaseResults%(is-c-exp), compiled-body :: CaseResults%(is-c-block)) -> CaseResults%(is-c-block):
-  if A.is-a-blank(b.ann) or A.is-a-any(b.ann):
+fun compile-annotated-let(visitor, ann, id, compiled-e :: CaseResults%(is-c-exp), compiled-body :: CaseResults%(is-c-block)) -> CaseResults%(is-c-block):
+  if A.is-a-blank(ann) or A.is-a-any(ann):
     c-block(
       j-block(
         compiled-e.other-stmts +
         link(
-          j-var(js-id-of(b.id), compiled-e.exp),
+          j-var(js-id-of(id), compiled-e.exp),
           compiled-body.block.stmts
           )
         ),
@@ -402,35 +402,80 @@ fun compile-annotated-let(visitor, b :: N.ABind, compiled-e :: CaseResults%(is-c
     step = visitor.cur-step
     after-ann = visitor.make-label()
     after-ann-case = j-case(after-ann, j-block(compiled-body.block.stmts))
-    compiled-ann = compile-ann(b.ann, visitor)
+    compiled-ann = compile-ann(ann, visitor)
     c-block(
       j-block(
         compiled-e.other-stmts +
-        [list: j-var(js-id-of(b.id), compiled-e.exp)]  +
+        [list: j-var(js-id-of(id), compiled-e.exp)]  +
         compiled-ann.other-stmts +
         [list:
           j-expr(j-assign(step, after-ann)),
           j-expr(rt-method("_checkAnn", [list:
-                visitor.get-loc(b.ann.l),
+                visitor.get-loc(ann.l),
                 compiled-ann.exp,
-                j-id(js-id-of(b.id))])),
+                j-id(js-id-of(id))])),
           j-break
         ]),
       concat-cons(after-ann-case, compiled-body.new-cases))
   end
 end
 
-fun get-new-cases(compiler, opt-dest, opt-body, after-label, ans):
+fun compile-annotated-assign(visitor, ann, id, compiled-e :: CaseResults%(is-c-exp), compiled-body :: CaseResults%(is-c-block)) -> CaseResults%(is-c-block):
+  if A.is-a-blank(ann) or A.is-a-any(ann):
+    c-block(
+      j-block(
+        compiled-e.other-stmts +
+        link(
+          j-expr(j-dot-assign(j-id(js-id-of(id)), "$var", compiled-e.exp)),
+          compiled-body.block.stmts
+          )
+        ),
+      compiled-body.new-cases
+      )
+  else:
+    step = visitor.cur-step
+    after-ann = visitor.make-label()
+    after-ann-case = j-case(after-ann, j-block(compiled-body.block.stmts))
+    compiled-ann = compile-ann(ann, visitor)
+    c-block(
+      j-block(
+        compiled-e.other-stmts +
+        [list: j-expr(j-dot-assign(j-id(js-id-of(id)), compiled-e.exp))]  +
+        compiled-ann.other-stmts +
+        [list:
+          j-expr(j-assign(step, after-ann)),
+          j-expr(rt-method("_checkAnn", [list:
+                visitor.get-loc(ann.l),
+                compiled-ann.exp,
+                j-dot(j-id(js-id-of(id)), "$var")])),
+          j-break
+        ]),
+      concat-cons(after-ann-case, compiled-body.new-cases))
+  end
+end
+
+
+data TargetType:
+  | split-let
+  | split-var
+end
+
+fun get-new-cases(compiler, opt-dest :: Option<A.Name>, ann :: A.Ann, target-type :: TargetType, opt-body, after-label, ans):
   opt-compiled-body = opt-body.and-then(lam(b): some(b.visit(compiler)) end)
   cases(Option) opt-dest:
     | some(dest) =>
       cases(Option) opt-compiled-body:
         | some(compiled-body) =>
-          compiled-binding = compile-annotated-let(compiler, dest, c-exp(j-id(ans), empty), compiled-body)
+          compiled-binding =
+            if is-split-let(target-type):
+              compile-annotated-let(compiler, ann, dest, c-exp(j-id(ans), empty), compiled-body)
+            else:
+              compile-annotated-assign(compiler, ann, dest, c-exp(j-id(ans), empty), compiled-body)
+            end
           concat-cons(
             j-case(after-label, compiled-binding.block),
             compiled-binding.new-cases)
-        | none => raise("Impossible: compile-split-app can't have a dest without a body")
+        | none => raise("Impossible: get-new-cases can't have a dest without a body")
       end
     | none =>
       cases(Option) opt-compiled-body:
@@ -441,13 +486,13 @@ fun get-new-cases(compiler, opt-dest, opt-body, after-label, ans):
   end
 end
 
-fun compile-split-app(l, compiler, opt-dest, f, args, opt-body):
+fun compile-split-app(l, compiler, opt-dest, ann, target-type, f, args, opt-body):
   ans = compiler.cur-ans
   step = compiler.cur-step
   compiled-f = f.visit(compiler).exp
   compiled-args = args.map(lam(a): a.visit(compiler).exp end)
   after-app-label = if is-none(opt-body): compiler.cur-target else: compiler.make-label() end
-  new-cases = get-new-cases(compiler, opt-dest, opt-body, after-app-label, ans)
+  new-cases = get-new-cases(compiler, opt-dest, ann, target-type, opt-body, after-app-label, ans)
   c-block(
     j-block([list:
         check-fun(compiler.get-loc(l), compiled-f),
@@ -459,7 +504,7 @@ fun compile-split-app(l, compiler, opt-dest, f, args, opt-body):
     new-cases)
 end
 
-fun compile-split-if(compiler, opt-dest, cond, consq, alt, opt-body):
+fun compile-split-if(compiler, opt-dest, ann, target-type, cond, consq, alt, opt-body):
   consq-label = compiler.make-label()
   alt-label = compiler.make-label()
   after-if-label = if is-none(opt-body): compiler.cur-target else: compiler.make-label() end
@@ -470,7 +515,7 @@ fun compile-split-if(compiler, opt-dest, cond, consq, alt, opt-body):
   new-cases =
     concat-cons(j-case(consq-label, compiled-consq.block), compiled-consq.new-cases)
     + concat-cons(j-case(alt-label, compiled-alt.block), compiled-alt.new-cases)
-    + get-new-cases(compiler, opt-dest, opt-body, after-if-label, ans)
+    + get-new-cases(compiler, opt-dest, ann, target-type, opt-body, after-if-label, ans)
   c-block(
     j-block([list: 
         j-if(rt-method("isPyretTrue", [list: cond.visit(compiler).exp]),
@@ -535,7 +580,7 @@ fun compile-cases-branch(compiler, compiled-val, branch :: N.ACasesBranch):
   end
 end
   
-fun compile-split-cases(compiler, opt-dest, typ, val :: N.AVal, branches :: List<N.ACasesBranch>, _else :: N.AExpr, opt-body :: Option<N.AExpr>):
+fun compile-split-cases(compiler, opt-dest, ann, target-type, typ, val :: N.AVal, branches :: List<N.ACasesBranch>, _else :: N.AExpr, opt-body :: Option<N.AExpr>):
   compiled-val = val.visit(compiler).exp
   after-cases-label = if is-none(opt-body): compiler.cur-target else: compiler.make-label() end
   compiler-after-cases = compiler.{cur-target: after-cases-label}
@@ -557,7 +602,7 @@ fun compile-split-cases(compiler, opt-dest, typ, val :: N.AVal, branches :: List
   # NOTE: Ignoring typ for the moment!
   new-cases =
     branch-else-cases
-    + get-new-cases(compiler, opt-dest, opt-body, after-cases-label, compiler.cur-ans)
+    + get-new-cases(compiler, opt-dest, ann, target-type, opt-body, after-cases-label, compiler.cur-ans)
   c-block(
     j-block([list:
         j-var(dispatch, dispatch-table),
@@ -623,17 +668,32 @@ compiler-visitor = {
     end
   end,
   a-let(self, l :: Loc, b :: N.ABind, e :: N.ALettable, body :: N.AExpr):
+    target = 
+      if N.is-a-seq(body) and N.is-a-assign(body.e1) and N.is-a-id(body.e1.value) and (body.e1.value.id == b.id):
+        # This is the pattern
+        #   let anf_assign### = val:
+        #     actual-var.$var = anf_assign###
+        #     e2
+        #   end
+        { target-type : split-var, target : body.e1.id, body : body.e2 }
+      else:
+        { target-type : split-let, target : b.id, body : body }
+      end
     cases(N.ALettable) e:
       | a-app(l2, f, args) =>
-        compile-split-app(l2, self, some(b), f, args, some(body))
+        compile-split-app(l2, self, some(target.target), b.ann, target.target-type, f, args, some(target.body))
       | a-if(l2, cond, then, els) =>
-        compile-split-if(self, some(b), cond, then, els, some(body))
+        compile-split-if(self, some(target.target), b.ann, target.target-type, cond, then, els, some(target.body))
       | a-cases(l2, typ, val, branches, _else) =>
-        compile-split-cases(self, some(b), typ, val, branches, _else, some(body))
+        compile-split-cases(self, some(target.target), b.ann, target.target-type, typ, val, branches, _else, some(target.body))
       | else =>
         compiled-e = e.visit(self)
-        compiled-body = body.visit(self)
-        compile-annotated-let(self, b, compiled-e, compiled-body)
+        compiled-body = target.body.visit(self)
+        if is-split-let(target.target-type):
+          compile-annotated-let(self, b.ann, target.target, compiled-e, compiled-body)
+        else:
+          compile-annotated-assign(self, b.ann, target.target, compiled-e, compiled-body)
+        end
     end
   end,
   a-var(self, l :: Loc, b :: N.ABind, e :: N.ALettable, body :: N.AExpr):
@@ -650,23 +710,17 @@ compiler-visitor = {
   a-seq(self, l, e1, e2):
     cases(N.ALettable) e1:
       | a-app(l2, f, args) =>
-        compile-split-app(l2, self, none, f, args, some(e2))
+        compile-split-app(l2, self, none, A.a-blank, split-let, f, args, some(e2))
       | a-if(l2, cond, consq, alt) =>
-        compile-split-if(self, none, cond, consq, alt, some(e2))
+        compile-split-if(self, none, A.a-blank, split-let, cond, consq, alt, some(e2))
       | a-cases(l2, typ, val, branches, _else) =>
-        compile-split-cases(self, none, typ, val, branches, _else, some(e2))
+        compile-split-cases(self, none, A.a-blank, split-let, typ, val, branches, _else, some(e2))
       | else =>
         e1-visit = e1.visit(self).exp
         e2-visit = e2.visit(self)
-        if J.JStmt(e1-visit):
-          c-block(
-            j-block(link(e1-visit, e2-visit.block.stmts)),
-            e2-visit.new-cases)
-        else:
-          c-block(
-            j-block(link(j-expr(e1-visit), e2-visit.block.stmts)),
-            e2-visit.new-cases)
-        end
+        c-block(
+          j-block(link(j-expr(e1-visit), e2-visit.block.stmts)),
+          e2-visit.new-cases)
     end
   end,
   a-if(self, l :: Loc, cond :: N.AVal, consq :: N.AExpr, alt :: N.AExpr):
@@ -678,11 +732,11 @@ compiler-visitor = {
   a-lettable(self, _, e :: N.ALettable):
     cases(N.ALettable) e:
       | a-app(l, f, args) =>
-        compile-split-app(l, self, none, f, args, none)
+        compile-split-app(l, self, none, A.a-blank, split-let, f, args, none)
       | a-if(l, cond, consq, alt) =>
-        compile-split-if(self, none, cond, consq, alt, none)
+        compile-split-if(self, none, A.a-blank, split-let, cond, consq, alt, none)
       | a-cases(l, typ, val, branches, _else) =>
-        compile-split-cases(self, none, typ, val, branches, _else, none)
+        compile-split-cases(self, none, A.a-blank, split-let, typ, val, branches, _else, none)
       | else =>
          visit-e = e.visit(self)
          c-block(
