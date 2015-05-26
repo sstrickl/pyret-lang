@@ -1759,6 +1759,7 @@ function isMethod(obj) { return obj instanceof PMethod; }
         throw makeMessageException('negative tolerance ' + tol);
       }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-abs-now3(...)");
         return equal3(l, r, false, tol);
       });
     };
@@ -1770,17 +1771,19 @@ function isMethod(obj) { return obj instanceof PMethod; }
         throw makeMessageException('relative tolerance ' + relTol + ' outside [0,1]');
       }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-rel-now3(...)");
         return equal3(l, r, false, relTol, true);
       });
     };
 
     function equalWithinAbs3(tol) {
-      thisRuntime.checkArity(1, arguments, "within3");
+      thisRuntime.checkArity(1, arguments, "within-abs3");
       thisRuntime.checkNumber(tol);
       if (jsnums.lessThan(tol, 0)) {
         throw makeMessageException('negative tolerance ' + tol);
       }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-abs3(...)");
         return equal3(l, r, true, tol);
       });
     };
@@ -1792,18 +1795,13 @@ function isMethod(obj) { return obj instanceof PMethod; }
         throw makeMessageException('relative tolerance ' + relTol + ' outside [0,1]');
       }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-rel3(...)");
         return equal3(l, r, true, relTol);
       });
     };
 
     function equalWithinAbsNow(tol) {
-      thisRuntime.checkArity(1, arguments, "within-abs-now");
-      thisRuntime.checkNumber(tol);
-      if (jsnums.lessThan(tol, 0)) {
-        throw makeMessageException('negative tolerance ' + tol);
-      }
       return makeFunction(function(l, r) {
-        thisRuntime.checkArity(2, arguments, "from within-abs-now");
         return safeCall(function () {
           return equal3(l, r, false, tol);
         }, function(ans) {
@@ -1817,19 +1815,19 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
 
     var equalWithinAbsNowPy = makeFunction(function(tol) {
+      thisRuntime.checkArity(1, arguments, "within-abs-now");
+      thisRuntime.checkNumber(tol);
+      if (jsnums.lessThan(tol, 0)) {
+        throw makeMessageException('negative toelrance ' + tol);
+      }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-abs-now(...)");
         return makeBoolean(equalWithinAbsNow(tol).app(l, r));
       });
     });
 
     function equalWithin(tol) {
-      thisRuntime.checkArity(1, arguments, "within");
-      thisRuntime.checkNumber(tol);
-      if (jsnums.lessThan(tol, 0)) {
-        throw makeMessageException('negative tolerance ' + tol);
-      }
       return makeFunction(function(l, r) {
-        thisRuntime.checkArity(2, arguments, "from within");
         return safeCall(function () {
           return equal3(l, r, true, tol);
         }, function(ans) {
@@ -1843,19 +1841,19 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
 
     var equalWithinAbsPy = makeFunction(function(tol) {
+      thisRuntime.checkArity(1, arguments, "within-abs");
+      thisRuntime.checkNumber(tol);
+      if (jsnums.lessThan(tol, 0)) {
+        throw makeMessageException('negative tolerance ' + tol);
+      }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-abs(...)");
         return makeBoolean(equalWithin(tol).app(l, r));
       });
     });
 
     function equalWithinRelNow(relTol) {
-      thisRuntime.checkArity(1, arguments, "within-rel");
-      thisRuntime.checkNumber(relTol);
-      if (jsnums.lessThan(relTol, 0) || jsnums.greaterThan(relTol, 1)) {
-        throw makeMessageException('relative tolerance ' + relTol + ' outside [0,1]');
-      }
       return makeFunction(function(l, r) {
-        thisRuntime.checkArity(2, arguments, "from within-rel");
         return safeCall(function () {
           return equal3(l, r, false, relTol, true);
         }, function(ans) {
@@ -1869,19 +1867,19 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
 
     var equalWithinRelNowPy = makeFunction(function(relTol) {
-      return makeFunction(function(l, r) {
-        return makeBoolean(equalWithinRelNow(relTol).app(l, r));
-      });
-    });
-
-    function equalWithinRel(relTol) {
-      thisRuntime.checkArity(1, arguments, "within-rel");
+      thisRuntime.checkArity(1, arguments, "within-rel-now");
       thisRuntime.checkNumber(relTol);
       if (jsnums.lessThan(relTol, 0) || jsnums.greaterThan(relTol, 1)) {
         throw makeMessageException('relative tolerance ' + relTol + ' outside [0,1]');
       }
       return makeFunction(function(l, r) {
-        thisRuntime.checkArity(2, arguments, "from within-rel");
+        thisRuntime.checkArity(2, arguments, "within-rel-now(...)");
+        return makeBoolean(equalWithinRelNow(relTol).app(l, r));
+      });
+    });
+
+    function equalWithinRel(relTol) {
+      return makeFunction(function(l, r) {
         return safeCall(function () {
           return equal3(l, r, true, relTol, true);
         }, function(ans) {
@@ -1895,7 +1893,13 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
 
     var equalWithinRelPy = makeFunction(function(relTol) {
+      thisRuntime.checkArity(1, arguments, "within-rel");
+      thisRuntime.checkNumber(relTol);
+      if (jsnums.lessThan(relTol, 0) || jsnums.greaterThan(relTol, 1)) {
+        throw makeMessageException('relative tolerance ' + relTol + ' outside [0,1]');
+      }
       return makeFunction(function(l, r) {
+        thisRuntime.checkArity(2, arguments, "within-rel(...)");
         return makeBoolean(equalWithinRel(relTol).app(l, r));
       });
     });
@@ -1924,6 +1928,7 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
     // Pyret function from Pyret values to Pyret booleans (or throws)
     var equalAlwaysPy = makeFunction(function(left, right) {
+      thisRuntime.checkArity(2, arguments, "equal-always");
         return makeBoolean(equalAlways(left, right));
     });
     // JS function from Pyret values to Pyret equality answers
@@ -1946,6 +1951,7 @@ function isMethod(obj) { return obj instanceof PMethod; }
     };
     // Pyret function from Pyret values to Pyret booleans (or throws)
     var equalNowPy = makeFunction(function(left, right) {
+      thisRuntime.checkArity(2, arguments, "equal-now");
         return makeBoolean(equalNow(left, right));
     });
 
