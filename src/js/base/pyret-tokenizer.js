@@ -131,7 +131,7 @@ define(["../../../lib/jglr/jglr"], function(E) {
     "[-+]" + unsigned_rational_or_decimal_part + "[iIjJ]"
 
   const mod_unsigned_polar_complexrational_part = unsigned_rational_or_decimal_part +
-    "@[-+]" + unsigned_rational_or_decimal_part
+    "@[-+]?" + unsigned_rational_or_decimal_part
 
   const complexrational_string = "^[-+]?(?:" +
     real_unsigned_rect_complexrational_part + "|" +
@@ -141,7 +141,7 @@ define(["../../../lib/jglr/jglr"], function(E) {
     "[-+]" + unsigned_decimal_part + "[iIjJ]"
 
   const mod_unsigned_polar_complexroughnum_part = unsigned_decimal_part +
-    "@[-+]" + unsigned_decimal_part
+    "@[-+]?" + unsigned_decimal_part
 
   const complexroughnum_string = "^~[-+]?(?:" +
     real_unsigned_rect_complexroughnum_part + "|" +
@@ -303,7 +303,6 @@ define(["../../../lib/jglr/jglr"], function(E) {
     {name: "COLON", val: colon, parenIsForExp: true},
     {name: "BAR", val: bar, parenIsForExp: true},
 
-    {name: "RATIONAL", val: rational},
     {name: "NUMBER", val: number},
     {name: "LONG_STRING", val: tquot_str},
     {name: "STRING", val: dquot_str},

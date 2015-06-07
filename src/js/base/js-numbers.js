@@ -1883,7 +1883,7 @@ define(function() {
     if (!polarP) {
       return new Complexrational(a, b);
     } else {
-      return new Complexrational(multiply(a,cos(b)), multiply(a,sin(b)));
+      return new Complexrational(toRational(multiply(a,cos(b))), toRational(multiply(a,sin(b))));
     }
   }
 
@@ -2052,7 +2052,7 @@ define(function() {
   var roughnumRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)$");
 
   var complexroughnumRectRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)([-+]\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)[iIjJ]$");
-  var complexroughnumPolarRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)@([-+]\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)$");
+  var complexroughnumPolarRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)@([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)$");
 
   var unsignedRationalOrDecimal = "(?:\\d+/\\d+|\\d+(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)";
 
@@ -2147,12 +2147,12 @@ define(function() {
 
     aMatch = x.match(complexrationalRectRegexp);
     if (aMatch) {
-      return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]));
+      return Complexrational.makeInstance(fromString(aMatch[1]), fromString(aMatch[2]));
     }
 
     aMatch = x.match(complexrationalPolarRegexp);
     if (aMatch) {
-      return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]), 1);
+      return Complexrational.makeInstance(fromString(aMatch[1]), fromString(aMatch[2]), 1);
     }
 
     return false; // if all else fails
