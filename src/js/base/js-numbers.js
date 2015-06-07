@@ -2150,7 +2150,7 @@ define(function() {
       return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]));
     }
 
-    aMatch = x.match(complexRationalPolarRegexp);
+    aMatch = x.match(complexrationalPolarRegexp);
     if (aMatch) {
       return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]), 1);
     }
