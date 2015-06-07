@@ -152,6 +152,10 @@ define(["../../../lib/jglr/jglr"], function(E) {
                             complexroughnum_string + "|" +
                             roughnum_string, STICKY_REGEXP)
 
+  // rational is subsumed in number, but we're keeping it separate to
+  // perform some well-formedness tests
+  const rational = new RegExp("^[-+]?[0-9]+/[0-9]+", STICKY_REGEXP);
+
                             //
 
   const parenparen = new RegExp("^\\((?=\\()", STICKY_REGEXP); // NOTE: Don't include the following paren
@@ -299,6 +303,7 @@ define(["../../../lib/jglr/jglr"], function(E) {
     {name: "COLON", val: colon, parenIsForExp: true},
     {name: "BAR", val: bar, parenIsForExp: true},
 
+    {name: "RATIONAL", val: rational},
     {name: "NUMBER", val: number},
     {name: "LONG_STRING", val: tquot_str},
     {name: "STRING", val: dquot_str},
