@@ -254,7 +254,9 @@ define(function() {
     return (typeof(thing) === 'number'
             || (thing instanceof Rational ||
                 thing instanceof Roughnum ||
-                thing instanceof BigInteger));
+                thing instanceof BigInteger ||
+               thing instanceof Complexroughnum ||
+               thing instanceof Complexrational));
   };
 
   // isRational: pyretnum -> boolean
@@ -1868,10 +1870,197 @@ define(function() {
     return asin(this.n);
   };
 
+  // Complexrational
+
+  var Complexrational = function(r, i) {
+    this.realPart = r;
+    this.imagPart = i;
+  }
+
+  Complexrational.makeInstance = function(a, b, polarP) {
+    if (!b) { b = 0; }
+    if (equalsAnyZero(b)) return a;
+    if (!polarP) {
+      return new Complexrational(a, b);
+    } else {
+      return new Complexrational(multiply(a,cos(b)), multiply(a,sin(b)));
+    }
+  }
+
+  Complexrational.prototype.toString = function() {
+    return this.realPart.toString() +
+      (isNegative(this.imagPart) ? "" : "+") +
+      this.imagPart.toString() + "i";
+  }
+
+  // Complexroughnums
+
+  var Complexroughnum = function(r, i) {
+    this.realPart = r;
+    this.imagPart = i;
+  }
+
+  Complexroughnum.makeInstance = function (a, b, polarP) {
+    if (!b) { b = 0; }
+    if (!(typeof(a) === 'number' && typeof(b) === 'number'))
+      throwRuntimeError('Complexroughnum constructor got unsuitable args ' + a + ', ' + b);
+    if (b === 0) return Roughnum.makeInstance(a);
+    if (!polarP) {
+      return new Complexroughnum(a, b);
+    } else {
+      return new Complexroughnum(a * cos(b), a * sin(b));
+    }
+  }
+
+  Complexroughnum.prototype.isFinite = function() {
+    // no overflows
+    return true;
+  }
+
+  //  Complexroughnum.prototype.toRational
+
+  // Complexroughnum.prototype.toExact =
+
+  Complexroughnum.prototype.toString = function() {
+    return "~" + this.realPart.toString() +
+      (this.imagPart < 0 ? "" : "+") +
+      this.imagPart.toString() + "i";
+  }
+
+  Complexroughnum.prototype.equals = function(other, aUnionFind) {
+    throwRuntimeError("complexroughnums can't be compared for equality");
+  }
+
+  Complexroughnum.prototype.isRational = function() {
+    return false;
+  }
+
+  Complexroughnum.prototype.isExact = function() {
+    return false;
+  }
+
+  Complexroughnum.prototype.isInteger = function() {
+    return false;
+  }
+
+  Complexroughnum.prototype.isReal = function() {
+    return false;
+  }
+
+  Complexroughnum.prototype.isRoughnum = function() {
+    return false;
+  }
+
+  Complexroughnum.prototype.isPositive = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  Complexroughnum.prototype.isNonNegative = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  Complexroughnum.prototype.isNegative = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  Complexroughnum.prototype.isNonPositive = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  Complexroughnum.prototype.add = function(other) {
+    return Complexroughnum.makeInstance(this.realPart + other.realPart,
+                                        this.imagPart + other.imagPart);
+  }
+
+  Complexroughnum.prototype.subtract = function(other) {
+    return Complexroughnum.makeInstance(this.realPart - other.realPart,
+                                        this.imagPart - other.imagPart);
+  }
+
+  Complexroughnum.prototype.negate = function() {
+    return Complexroughnum.makeInstance(-this.realPart, -this.imagPart);
+  }
+
+  Complexroughnum.prototype.multiply = function(other) {
+    return Complexroughnum.makeInstance(this.realPart * other.realPart - this.imagPart * other.imagPart,
+                                        this.realPart * other.imagPart + this.imagPart * other.realPart);
+  }
+
+  Complexroughnum.prototype.divide = function(other) {
+    return 0; //todo
+  }
+
+  Complexroughnum.prototype.toFixnum = function() {
+    return 0; //todo
+  }
+
+  Complexroughnum.prototype.toRoughnum = function() {
+    return 0; //todo
+  }
+
+  //numerator
+
+  //denominator
+
+  //floor
+
+  //ceiling
+
+  //round
+
+  //roundEven
+
+  //greaterThan etc errors
+
+  //integerSqrt ?
+
+  //sqrt
+
+  //abs
+
+  //log
+
+  //tan
+
+  //atan
+
+  //cos
+
+  //sin
+
+  //expt
+
+  //exp
+
+  //acos
+
+  //asin
+
+  Complexroughnum.prototype.isPositive = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  Complexroughnum.prototype.isPositive = function() {
+    throwRuntimeError("complexroughnums can't be compared to 0");
+  }
+
+  //
+
   var rationalRegexp = new RegExp("^([+-]?\\d+)/(\\d+)$");
   var digitRegexp = new RegExp("^[+-]?\\d+$");
   var flonumRegexp = new RegExp("^([-+]?)(\\d+\)((?:\\.\\d*)?)((?:[Ee][-+]?\\d+)?)$");
   var roughnumRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)$");
+
+  var complexroughnumRectRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)([-+]\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)[iIjJ]$");
+  var complexroughnumPolarRegexp = new RegExp("^~([-+]?\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)@([-+]\\d*(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)$");
+
+  var unsignedRationalOrDecimal = "(?:\\d+/\\d+|\\d+(?:\\.\\d*)?(?:[Ee][-+]?\\d+)?)";
+
+  var complexrationalRectRegexp = new RegExp("^([-+]?" + unsignedRationalOrDecimal + ")([-+]" +
+                                             unsignedRationalOrDecimal + ")[iIjJ]$");
+  var complexrationalPolarRegexp = new RegExp("^([-+]?" + unsignedRationalOrDecimal + ")@([-+]?" +
+                                              unsignedRationalOrDecimal + ")$");
+
   var scientificPattern = new RegExp("^([+-]?\\d*\\.?\\d*)[Ee]([+]?\\d+)$");
 
   // fromString: string -> (pyretnum | false)
@@ -1944,6 +2133,26 @@ define(function() {
     aMatch = x.match(roughnumRegexp);
     if (aMatch) {
       return Roughnum.makeInstance(Number(aMatch[1]));
+    }
+
+    aMatch = x.match(complexroughnumRectRegexp);
+    if (aMatch) {
+      return Complexroughnum.makeInstance(Number(aMatch[1]), Number(aMatch[2]));
+    }
+
+    aMatch = x.match(complexroughnumPolarRegexp);
+    if (aMatch) {
+      return Complexroughnum.makeInstance(Number(aMatch[1]), Number(aMatch[2]), 1);
+    }
+
+    aMatch = x.match(complexrationalRectRegexp);
+    if (aMatch) {
+      return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]));
+    }
+
+    aMatch = x.match(complexRationalPolarRegexp);
+    if (aMatch) {
+      return Complexrational.makeInstance(Number(aMatch[1]), Number(aMatch[2]), 1);
     }
 
     return false; // if all else fails
@@ -3621,6 +3830,8 @@ define(function() {
   Numbers['BigInteger'] = BigInteger;
   Numbers['Rational'] = Rational;
   Numbers['Roughnum'] = Roughnum;
+  Numbers['Complexroughnum'] = Complexroughnum;
+  Numbers['Complexrational'] = Complexrational;
 
   Numbers['MIN_FIXNUM'] = MIN_FIXNUM;
   Numbers['MAX_FIXNUM'] = MAX_FIXNUM;
