@@ -3773,6 +3773,16 @@ function isMethod(obj) { return obj instanceof PMethod; }
       thisRuntime.checkNumber(n);
       return thisRuntime.makeNumberBig(jsnums.toRoughnum(n));
     }
+    var num_to_complexrational = function(n) {
+      thisRuntime.checkArity(1, arguments, "num-to-complexrational");
+      thisRuntime.checkNumber(n);
+      return thisRuntime.makeNumberBig(jsnums.toComplexrational(n));
+    }
+    var num_to_complexroughnum = function(n) {
+      thisRuntime.checkArity(1, arguments, "num-to-complexroughnum");
+      thisRuntime.checkNumber(n);
+      return thisRuntime.makeNumberBig(jsnums.toComplexroughnum(n));
+    }
     var num_to_fixnum = function(n) {
       thisRuntime.checkArity(1, arguments, "num-to-fixnum");
       thisRuntime.checkNumber(n);
@@ -4049,7 +4059,6 @@ function isMethod(obj) { return obj instanceof PMethod; }
           });
           checksPlusBody += constructorBody;
         }
-        
 
         var constrFun = "return function(" + allArgs.join(",") + ") {\n" +
           "if(arguments.length !== " + allArgs.length + ") {\n" +
