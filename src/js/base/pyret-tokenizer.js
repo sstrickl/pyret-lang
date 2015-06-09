@@ -303,6 +303,7 @@ define(["../../../lib/jglr/jglr"], function(E) {
     {name: "COLON", val: colon, parenIsForExp: true},
     {name: "BAR", val: bar, parenIsForExp: true},
 
+    {name: "RATIONAL", val: rational},
     {name: "NUMBER", val: number},
     {name: "LONG_STRING", val: tquot_str},
     {name: "STRING", val: dquot_str},
