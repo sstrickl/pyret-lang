@@ -9,21 +9,17 @@ R(["../../build/phase1/js/pyret-tokenizer", "../../build/phase1/js/pyret-parser"
   var parsed = G.PyretGrammar.parse(toks);
   if (parsed) {
     console.log("Result:");
+    G.PyretGrammar.countAndPriceAllParses(parsed);
+    console.log("Count:", parsed.count, ", min cost:", parsed.minCost);
     var countParses = G.PyretGrammar.countAllParses(parsed);
     console.log("There are " + countParses + " potential parses");
-    if (countParses === 1) {
-      var ast = G.PyretGrammar.constructUniqueParse(parsed);
-      console.log("AST constructed");
-      var astStr = ast.toString(true);
-      console.log("ast.toString().length = " + astStr.length)
-      console.log(astStr);
-      return ast;
-    } else {
-      var asts = G.PyretGrammar.constructAllParses(parsed);
-      for (var i = 0; i < asts.length; i++) {
-        console.log("Parse " + i + ": " + asts[i].toString());
-      }
-      // return asts;
+    var count = 0;
+    console.log("Cheapest parse:", G.PyretGrammar.constructCheapestParse(parsed).toString());
+    var answer = G.PyretGrammar.constructNextParse(parsed);
+    while (answer) {
+      count++;
+      console.log("Parse " + count + ": " + answer.parse.weight + " " + answer.parse.toString());
+      answer = G.PyretGrammar.constructNextParse(parsed, undefined, answer.directions);
     }
   } else {
     console.log("Invalid parse: you screwed up.");

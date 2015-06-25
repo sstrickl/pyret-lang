@@ -2,11 +2,15 @@
 
 /*
   name: PyretGrammar
+  sortKey: weight
 */
 
 program: prelude block
 
 end: END | SEMI
+end: { weight: 1, comment: "missing end" }
+colon: COLON 
+colon: { weight: 1, comment: "missing colon" }
 
 prelude: [provide-stmt] [provide-types-stmt] import-stmt*
 
@@ -48,7 +52,7 @@ type-let-expr: TYPE-LET type-let-bind-elt* type-let-bind COLON block end
 
 contract-stmt: NAME COLONCOLON (ann | noparen-arrow-ann)
 
-fun-expr: FUN NAME fun-header COLON doc-string block where-clause end
+fun-expr: FUN NAME fun-header colon doc-string block where-clause end
 fun-header: ty-params args return-ann
 ty-params:
   [(LANGLE|LT) list-ty-param* NAME (RANGLE|GT)]

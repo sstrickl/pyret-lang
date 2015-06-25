@@ -28,7 +28,12 @@ define(["js/runtime-util", "js/ffi-helpers", "trove/ast", "trove/srcloc", "js/py
         // if a todo item is a Pyret value, it just gets pushed across to done
         // if a todo item is an array, then doing = RUNTIME.makeList and it creates a stack frame
         function tr(node) {
-          return translators[node.name](node);
+          if (node.weight > 0 && node.flags && node.flags.comment) {
+            RUNTIME.ffi.throwMessageException("Invalid parse at " + node.pos.toString(true) + ": " + node.flags.comment);
+          }
+          if (translators[node.name])
+            return translators[node.name](node);
+          return node;
         }
         var pos = function(p) { return makePyretPos(fileName, p); };
         var makeList = F.makeList;
@@ -343,6 +348,8 @@ define(["js/runtime-util", "js/ffi-helpers", "trove/ast", "trove/srcloc", "js/py
           },
           'fun-expr': function(node) {
             // (fun-expr FUN fun-name fun-header COLON doc body check END)
+            tr(node.kids[3]); // make sure colon is present
+            tr(node.kids[7]); // make sure end is present
             var header = tr(node.kids[2]);
             return RUNTIME.getField(ast, 's-fun')
               .app(pos(node.pos), symbol(node.kids[1]),
@@ -1026,6 +1033,8 @@ define(["js/runtime-util", "js/ffi-helpers", "trove/ast", "trove/srcloc", "js/py
           //   console.log(toks.next().toString(true));
           var parsed = grammar.parse(toks);
           //console.log("Result:");
+          grammar.countAndPriceAllParses(parsed);
+          console.log("Count:", parsed.count, ", min cost:", parsed.minCost);
           var countParses = grammar.countAllParses(parsed);
           if (countParses == 0) {
             var nextTok = toks.curTok; 
@@ -1044,21 +1053,11 @@ define(["js/runtime-util", "js/ffi-helpers", "trove/ast", "trove/srcloc", "js/py
               RUNTIME.ffi.throwParseErrorNextToken(makePyretPos(fileName, nextTok.pos), nextTok.value || nextTok.toString(true));
           }
           //console.log("There were " + countParses + " potential parses");
-          if (countParses === 1) {
-            var ast = grammar.constructUniqueParse(parsed);
-            //          console.log(ast.toString());
-            return translate(ast, fileName);
-          } else {
-            var asts = grammar.constructAllParses(parsed);
-            throw "Non-unique parse";
-            for (var i = 0; i < asts.length; i++) {
-              //console.log("Parse " + i + ": " + asts[i].toString());
-              //            console.log(("" + asts[i]) === ("" + asts2[i]));
-            }
-            return translate(ast, fileName);
-          }
+          var ast = grammar.constructCheapestParse(parsed);
+          // console.log(ast.toString());
+          return translate(ast, fileName);
         } catch(e) {
-          // console.error("Fatal error in parsing: ", e);
+          // console.error("Fatal error in parsing: ", e.stack);
           throw e;
         }
       }
